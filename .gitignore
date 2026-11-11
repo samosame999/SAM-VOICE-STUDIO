@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary and build artifacts
+*.log
+*.tmp
+
+# Output audio generations
+outputs/*.wav
+outputs/*.mp3
+!outputs/README.txt
+
+# Heavy model weights (>100MB strictly blocked by GitHub)
+models/xtts_v2/*.pth
+
+# Portable installer (>100MB strictly blocked by GitHub)
+*.7z
+SAM_VOICE_STUDIO_Full_Setup.exe

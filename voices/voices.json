@@ -1,0 +1,110 @@
+[
+  {
+    "id": "01_ar_male_classical",
+    "name": "الفلاح الصبور",
+    "gender": "male",
+    "lang": "ar",
+    "dialect": "فصحى روائي",
+    "description": "صوت رجالي فصيح، إلقاء عميق ومتزن مناسب للوثائقيات والقصص.",
+    "file": "01_ar_male_classical.wav"
+  },
+  {
+    "id": "02_ar_male_levantine",
+    "name": "شامي هادئ",
+    "gender": "male",
+    "lang": "ar",
+    "dialect": "شامي (خدمة عملاء)",
+    "description": "صوت رجالي شامي هادئ وودود، مناسب للاستقبال وخدمة العملاء والرد الآلي.",
+    "file": "02_ar_male_levantine.wav"
+  },
+  {
+    "id": "03_ar_male_egyptian",
+    "name": "مصري إعلاني",
+    "gender": "male",
+    "lang": "ar",
+    "dialect": "لهجة مصرية",
+    "description": "صوت رجالي مصري نبرة إعلانية حيوية وجذابة، مناسب للحملات والتسويق.",
+    "file": "03_ar_male_egyptian.wav"
+  },
+  {
+    "id": "04_en_male_saudi",
+    "name": "Tariq (Saudi English)",
+    "gender": "male",
+    "lang": "en",
+    "dialect": "English (Saudi Accent)",
+    "description": "صوت رجالي يتحدث الإنجليزية بلكنة سعودية طليقة واحترافية.",
+    "file": "04_en_male_saudi.wav"
+  },
+  {
+    "id": "05_en_female_educational",
+    "name": "Sarah (Calm English)",
+    "gender": "female",
+    "lang": "en",
+    "dialect": "English (Neutral / Calm)",
+    "description": "صوت نسائي إنجليزي هادئ وتأملي، مناسب للتعليم والمحتوى الإرشادي.",
+    "file": "05_en_female_educational.wav"
+  },
+  {
+    "id": "06_ar_female_gulf",
+    "name": "خليجي عفوي",
+    "gender": "female",
+    "lang": "ar",
+    "dialect": "خليجي / سعودي",
+    "description": "صوت نسائي خليجي طبيعي وعفوي وقريب من المستمع، غير رسمي.",
+    "file": "06_ar_female_gulf.wav"
+  },
+  {
+    "id": "07_ar_female_hijazi_jumana",
+    "name": "جمانة (حجازي عصري)",
+    "gender": "female",
+    "lang": "ar",
+    "dialect": "سعودي حجازي",
+    "description": "صوت نسائي سعودي بلهجة حجازية عصرية وأسلوب مرن بين الهدوء والحماس.",
+    "file": "07_ar_female_hijazi_jumana.wav"
+  },
+  {
+    "id": "08_ar_female_storyteller",
+    "name": "حكايات راقية",
+    "gender": "female",
+    "lang": "ar",
+    "dialect": "فصحى سردي",
+    "description": "صوت نسائي فصيح، نبرة دافئة معبرة مناسبة للسرد القصصي والبودكاست.",
+    "file": "08_ar_female_storyteller.wav"
+  },
+  {
+    "id": "09_ar_female_formal",
+    "name": "فصحى رسمي",
+    "gender": "female",
+    "lang": "ar",
+    "dialect": "فصحى إخباري / مهني",
+    "description": "صوت نسائي مخارج حروف دقيقة وأداء رسمي وواضح للمشاريع الذكية.",
+    "file": "09_ar_female_formal.wav"
+  },
+  {
+    "id": "10_ar_female_nature",
+    "name": "طبيعة وتأمل",
+    "gender": "female",
+    "lang": "ar",
+    "dialect": "فصحى ملهم",
+    "description": "صوت نسائي هادئ ونقي للإعلانات الوجدانية والوثائقيات الطبيعية.",
+    "file": "10_ar_female_nature.wav"
+  },
+  {
+    "id": "11_ar_female_levantine",
+    "name": "شامي صانعة محتوى",
+    "gender": "female",
+    "lang": "ar",
+    "dialect": "شامي عصري",
+    "description": "صوت نسائي شامي حيوي وجذاب لصناع المحتوى وفيديوهات السوشيال ميديا.",
+    "file": "11_ar_female_levantine.wav"
+  },
+  {
+    "id": "12_ar_female_motivational",
+    "name": "فصحى تحفيزي",
+    "gender": "female",
+    "lang": "ar",
+    "dialect": "فصحى ملهم",
+    "description": "صوت نسائي حماسي وهادئ للعبارات التحفيزية وتطوير الذات.",
+    "file": "12_ar_female_motivational.wav"
+  }
+]

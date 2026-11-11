@@ -1,0 +1,10 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.4
+numpy==1.26.4
+scipy
+soundfile
+edge-tts
+TTS==0.22.0
+transformers==4.40.2
+tokenizers==0.19.1
