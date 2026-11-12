@@ -4,10 +4,15 @@ const previewAudio = $('previewAudio'), outputAudio = $('outputAudio');
 
 let voices = [];
 let selectedVoiceId = '';
-let language = 'ar';
+let language = 'auto';
 let selectedEngine = 'xtts';
 let targetSeconds = 15;
 let currentPreviewPlaying = null;
+let currentFilter = 'all';
+
+// Echo state
+let echoEnabled = false;
+let echoIntensity = 35;
 
 // Helpers
 function words(s) {
@@ -15,9 +20,27 @@ function words(s) {
   return m ? m.length : 0;
 }
 
+function detectLang(s) {
+  const ar = (s.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g) || []).length;
+  const en = (s.match(/[a-zA-Z]/g) || []).length;
+  if (ar > en) return 'ar';
+  if (en > 0) return 'en';
+  return 'ar';
+}
+
 function analyze() {
   const s = textEl.value, n = words(s), chars = s.length;
-  const wpm = language === 'ar' ? 145 : 150;
+  const detected = detectLang(s);
+  
+  // Update language badge
+  const badge = $('langDetectedBadge');
+  if (language === 'auto') {
+    badge.textContent = detected === 'ar' ? '🌍 اكتشاف تلقائي: العربية' : '🌍 اكتشاف تلقائي: الإنجليزية';
+  } else {
+    badge.textContent = language === 'ar' ? '🌍 لغة الإخراج: العربية (يدوي)' : '🌍 لغة الإخراج: الإنجليزية (يدوي)';
+  }
+
+  const wpm = (language === 'ar' || (language === 'auto' && detected === 'ar')) ? 145 : 150;
   const targetWords = Math.round(targetSeconds * wpm / 60);
   const estimatedSeconds = n ? (n / wpm * 60) : 0;
   const speedRatio = (estimatedSeconds && targetSeconds) ? (estimatedSeconds / targetSeconds) : 1.0;
@@ -29,7 +52,7 @@ function analyze() {
   $('guaranteedDuration').textContent = targetSeconds.toFixed(2) + ' ثانية بالضبط';
   $('currentSliderSec').textContent = targetSeconds + ' ثانية';
 
-  // Speed bar update
+  // Speed gauge
   const speedFill = $('speedFill');
   const speedRatioEl = $('speedRatio');
   const fit = $('fit');
@@ -44,26 +67,24 @@ function analyze() {
     return;
   }
 
-  // Visual meter
-  // Normal range: 0.85x to 1.25x
   const pct = Math.min(Math.max((speedRatio / 2.0) * 100, 10), 100);
   speedFill.style.width = pct + '%';
 
   if (speedRatio >= 0.85 && speedRatio <= 1.25) {
-    speedRatioEl.textContent = `${speedRatio.toFixed(2)}x (إلقاء طبيعي ومتناسق)`;
+    speedRatioEl.textContent = `${speedRatio.toFixed(2)}x (إلقاء بشري طبيعي ومتناسق)`;
     speedFill.classList.add('good');
     fit.classList.add('good');
-    fit.textContent = `✓ ممتاز! النص متناسق تماماً مع مدة ${targetSeconds} ثانية. سيخرج المقطع بـ ${targetSeconds}.00 ثانية بالضبط وبنبرة طبيعية.`;
+    fit.textContent = `✓ ممتاز! النص متناسق تماماً مع مدة ${targetSeconds} ثانية. سيخرج المقطع بـ ${targetSeconds}.00 ثانية بالضبط وبنبرة بشرية طبيعية.`;
   } else if (speedRatio < 0.85) {
     speedRatioEl.textContent = `${speedRatio.toFixed(2)}x (إلقاء هادئ ومتأنٍ)`;
     speedFill.classList.add('warn');
     fit.classList.add('short');
-    fit.textContent = `النص قصير مقارنة بـ ${targetSeconds} ثانية. يمكنك إضافة كلمات إن رغبت، أو سيقوم النظام بمد الإلقاء بدقة ليصل إلى ${targetSeconds}.00 ثانية بالضبط.`;
+    fit.textContent = `النص قصير مقارنة بـ ${targetSeconds} ثانية. سيقوم النظام بمد الإلقاء باحترافية وبدون أي نبرة روبوتية ليصل إلى ${targetSeconds}.00 ثانية بالضبط.`;
   } else {
     speedRatioEl.textContent = `${speedRatio.toFixed(2)}x (إلقاء سريع ومضغوط)`;
     speedFill.classList.add('danger');
     fit.classList.add('long');
-    fit.textContent = `النص طويل مقارنة بـ ${targetSeconds} ثانية. سيلتزم النظام بـ ${targetSeconds}.00 ثانية بالضبط، ولكن يُفضل تقليل بضع كلمات لتفادي السرعة الزائدة.`;
+    fit.textContent = `النص طويل مقارنة بـ ${targetSeconds} ثانية. سيلتزم النظام بـ ${targetSeconds}.00 ثانية بالضبط، ولكن يُفضل تقليل بضع كلمات للحفاظ على إلقاء بشري مستريح.`;
   }
 }
 
@@ -79,8 +100,10 @@ function setDuration(v) {
 
 // Render Voices
 function renderVoices(filter = 'all') {
+  currentFilter = filter;
   voiceListEl.innerHTML = '';
   const filtered = voices.filter(v => {
+    if (filter === 'custom') return !!v.is_custom;
     if (filter === 'male') return v.gender === 'male';
     if (filter === 'female') return v.gender === 'female';
     if (filter === 'ar') return v.lang === 'ar';
@@ -88,21 +111,34 @@ function renderVoices(filter = 'all') {
     return true;
   });
 
+  $('voiceCountBadge').textContent = `${voices.length} صوتاً متاحاً (${filtered.length} مطابق)`;
+
+  if (filtered.length === 0) {
+    voiceListEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted)">لا توجد أصوات مطابقة للتصنيف الحالي.</div>';
+    return;
+  }
+
   filtered.forEach(v => {
     const card = document.createElement('div');
     card.className = 'voice' + (v.id === selectedVoiceId ? ' selected' : '');
     card.dataset.id = v.id;
 
-    const avatarLetter = v.gender === 'female' ? '♀' : '♂';
-    const avatarClass = v.gender === 'female' ? 'avatar female' : 'avatar male';
+    let avatarLetter = v.gender === 'female' ? '♀' : '♂';
+    let avatarClass = v.gender === 'female' ? 'avatar female' : 'avatar male';
+    if (v.is_custom) {
+      avatarLetter = '★';
+      avatarClass = 'avatar';
+    }
+
+    const badgeSpan = v.is_custom ? '<span style="color:#ffc184;font-size:9px"> [صوت مخصص]</span>' : '';
 
     card.innerHTML = `
       <div class="${avatarClass}">${avatarLetter}</div>
       <div class="vinfo">
-        <b>${v.name}</b>
-        <small>${v.dialect} · ${v.description.slice(0, 48)}...</small>
+        <b>${v.name}${badgeSpan}</b>
+        <small>${v.dialect || 'عينة صوتية'} · ${(v.description || '').slice(0, 48)}...</small>
       </div>
-      <button class="preview-btn" title="استماع للعينة الأصلية" data-file="${v.file}">▶</button>
+      <button class="preview-btn" title="استماع للعينة المرجعية" data-file="${v.file}">▶</button>
       <span class="check">✓</span>
     `;
 
@@ -112,7 +148,7 @@ function renderVoices(filter = 'all') {
       selectVoice(v.id);
     });
 
-    // Preview audio button
+    // Preview audio
     const pBtn = card.querySelector('.preview-btn');
     pBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -130,7 +166,7 @@ function selectVoice(id) {
   });
   const v = voices.find(x => x.id === id);
   if (v) {
-    $('engineMessage').textContent = `تم اختيار: ${v.name} (${v.dialect}) — المدة المستهدفة: ${targetSeconds} ثانية`;
+    $('engineMessage').textContent = `تم اختيار: ${v.name} — المدة المستهدفة: ${targetSeconds} ثانية`;
   }
 }
 
@@ -164,7 +200,23 @@ function playPreview(file, btn) {
   };
 }
 
-// Fetch initial data
+// Fetch Voices
+async function loadVoices() {
+  try {
+    const vRes = await fetch('/api/voices');
+    voices = await vRes.json();
+    if (voices.length > 0) {
+      if (!selectedVoiceId || !voices.some(v => v.id === selectedVoiceId)) {
+        selectedVoiceId = voices[0].id;
+      }
+      renderVoices(currentFilter);
+    }
+  } catch (err) {
+    console.error('Error fetching voices:', err);
+  }
+}
+
+// Fetch initial system status
 async function init() {
   try {
     const hRes = await fetch('/api/health');
@@ -174,18 +226,66 @@ async function init() {
       $('gpuName').textContent = hData.gpu;
       $('cudaStatus').textContent = hData.cuda ? 'مفعّل بنجاح' : 'غير متوفر';
     }
-
-    const vRes = await fetch('/api/voices');
-    voices = await vRes.json();
-    if (voices.length > 0) {
-      selectedVoiceId = voices[0].id;
-      renderVoices('all');
-    }
+    await loadVoices();
   } catch (err) {
     console.error('Init error:', err);
     $('sysStatus').textContent = 'تعذر الاتصال بالخادم';
   }
 }
+
+// Voice Toolbar Actions
+$('refreshVoicesBtn').addEventListener('click', async () => {
+  $('voiceCountBadge').textContent = 'جاري التحديث...';
+  await loadVoices();
+});
+
+$('openVoicesFolderBtn').addEventListener('click', async () => {
+  try {
+    await fetch('/api/open-voices-folder', { method: 'POST' });
+  } catch (e) {
+    console.error('Cannot open folder:', e);
+  }
+});
+
+$('uploadVoiceBtn').addEventListener('click', () => {
+  $('voiceFileInput').click();
+});
+
+$('voiceFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  $('engineMessage').textContent = `جاري رفع وفحص العينة الصوتية: ${file.name}...`;
+
+  try {
+    const res = await fetch('/api/voices/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok && data.status === 'success') {
+      voices = data.voices;
+      // Select the newly added voice
+      const newVoice = voices.find(v => v.file === file.name || v.id.includes(file.name.split('.')[0]));
+      if (newVoice) {
+        selectedVoiceId = newVoice.id;
+      }
+      renderVoices('all');
+      document.querySelectorAll('.vfilter').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
+      $('engineMessage').textContent = `✓ ${data.message} تم اختياره وجاهز للتحدث به فوراً!`;
+    } else {
+      alert('فشل رفع الصوت: ' + (data.detail || 'خطأ غير معروف'));
+    }
+  } catch (err) {
+    console.error('Upload error:', err);
+    alert('حدث خطأ أثناء رفع ملف الصوت.');
+  } finally {
+    $('voiceFileInput').value = '';
+  }
+});
 
 // Filters
 document.querySelectorAll('.vfilter').forEach(btn => {
@@ -215,18 +315,68 @@ document.querySelectorAll('.lang').forEach(btn => {
   });
 });
 
+// Echo / Reverb controls
+const echoToggle = $('echoToggle');
+const echoSlider = $('echoSlider');
+const echoLabel = $('echoLabel');
+const echoPanel = $('echoPanel');
+const sideEchoStatus = $('sideEchoStatus');
+
+function updateEchoUI() {
+  echoPanel.classList.toggle('disabled', !echoEnabled);
+  if (!echoEnabled) {
+    echoLabel.textContent = 'غير مفعّل (صوت جاف 100%)';
+    sideEchoStatus.textContent = 'معطل';
+    $('echoToggleText').textContent = 'صدى الصوت: غير مفعّل';
+  } else {
+    sideEchoStatus.textContent = `${echoIntensity}% مفعّل`;
+    $('echoToggleText').textContent = 'صدى الصوت: مفعّل ✓';
+    if (echoIntensity <= 10) echoLabel.textContent = `${echoIntensity}% (صدى خفيف جداً)`;
+    else if (echoIntensity <= 30) echoLabel.textContent = `${echoIntensity}% (صدى استوديو هادئ)`;
+    else if (echoIntensity <= 50) echoLabel.textContent = `${echoIntensity}% (صدى بودكاست دافئ)`;
+    else if (echoIntensity <= 75) echoLabel.textContent = `${echoIntensity}% (صدى قاعة كبرى)`;
+    else echoLabel.textContent = `${echoIntensity}% (إيكو سينمائي عميق)`;
+  }
+}
+
+echoToggle.addEventListener('change', () => {
+  echoEnabled = echoToggle.checked;
+  updateEchoUI();
+});
+
+echoSlider.addEventListener('input', (e) => {
+  echoIntensity = Number(e.target.value);
+  if (!echoEnabled && echoIntensity > 0) {
+    echoEnabled = true;
+    echoToggle.checked = true;
+  }
+  updateEchoUI();
+  document.querySelectorAll('.echo-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.val) === echoIntensity);
+  });
+});
+
+document.querySelectorAll('.echo-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = Number(btn.dataset.val);
+    echoIntensity = val;
+    echoSlider.value = val;
+    echoEnabled = val > 0;
+    echoToggle.checked = echoEnabled;
+    updateEchoUI();
+    document.querySelectorAll('.echo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
 // Text presets
 $('arSampleBtn').addEventListener('click', () => {
   textEl.value = 'أهلاً بكم في استوديو سام للصوتيات. نقدم لكم دقة متناهية والتزاماً تاماً بالوقت والسرعة المحددة لكل مشروع.';
-  language = 'ar';
-  document.querySelectorAll('.lang').forEach(b => b.classList.toggle('active', b.dataset.lang === 'ar'));
   analyze();
 });
 
 $('enSampleBtn').addEventListener('click', () => {
-  textEl.value = 'Welcome to SAM Voice Studio. Strict time-fitted AI speech synthesis, matching your exact target duration.';
-  language = 'en';
-  document.querySelectorAll('.lang').forEach(b => b.classList.toggle('active', b.dataset.lang === 'en'));
+  textEl.value = 'Every morning, he watched successful people walk past his small office, dreaming of becoming one of them. One day, his boss handed him a letter. He had just lost his job. Instead of giving up, he opened his old laptop and started building his own business. Five years later, he bought the company that once fired him.';
   analyze();
 });
 
@@ -253,8 +403,8 @@ $('generate').addEventListener('click', async () => {
   const resultBox = $('resultBox');
 
   genBtn.disabled = true;
-  genText.textContent = `جارٍ توليد المقطع وضبطه على ${targetSeconds} ثانية بالضبط...`;
-  msg.textContent = `يجري الآن تطبيق الذكاء الاصطناعي والمطابقة الزمنية الصارمة على ${targetSeconds} ثانية...`;
+  genText.textContent = `جارٍ توليد الصوت بنبرة بشرية وضبطه على ${targetSeconds} ثانية بالضبط...`;
+  msg.textContent = `يجري التوليد الآن بأعلى جودة بشرية ومطابقة زمنية صارمة على ${targetSeconds} ثانية...`;
   resultBox.classList.remove('active');
 
   try {
@@ -267,7 +417,9 @@ $('generate').addEventListener('click', async () => {
         language: language,
         engine: selectedEngine,
         target_seconds: targetSeconds,
-        strict_duration: true
+        strict_duration: true,
+        echo_enabled: echoEnabled,
+        echo_intensity: echoIntensity
       })
     });
 
@@ -278,6 +430,7 @@ $('generate').addEventListener('click', async () => {
       $('resultVoice').textContent = `الشخصية: ${data.voice}`;
       $('resultLang').textContent = `اللغة: ${data.language === 'ar' ? 'العربية' : 'الإنجليزية'}`;
       $('resultEngine').textContent = `المحرك: ${data.engine}`;
+      $('resultEcho').textContent = data.echo_applied ? `الصدى: مفعّل (${data.echo_intensity}%)` : 'الصدى: بدون';
       $('resultDurationBadge').textContent = `${data.exact_duration}s بالضبط (مطابق 100%)`;
       $('downloadWav').href = data.audio_url;
       $('downloadWav').download = data.filename;
@@ -297,5 +450,6 @@ $('generate').addEventListener('click', async () => {
 
 // Start
 setDuration(15);
+updateEchoUI();
 analyze();
 init();

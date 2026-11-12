@@ -22,9 +22,9 @@
 <main>
 <section class="hero">
   <div>
-    <span class="eyebrow">STRICT TIME-FITTED SPEECH SYNTHESIS</span>
-    <h2>حوّل النص إلى <em>صوت بشري مطابق تماماً للوقت</em></h2>
-    <p>توليد واستنساخ الأصوات مع التزام قطعي بالمدة المحددة (15 ثانية = 15.0 ثانية بالضبط دون زيادة أو نقصان).</p>
+    <span class="eyebrow">HIGH-FIDELITY SPEECH SYNTHESIS & VOICE CLONING</span>
+    <h2>حوّل النص إلى <em>صوت بشري واقعي مطابق تماماً للوقت</em></h2>
+    <p>استنساخ نبرات بشرية حقيقية بمشاعر طبيعية والتزام زمني صارم (15s = 15.000s) مع مؤثرات صدى استوديو احترافية.</p>
   </div>
   <div class="wave" aria-hidden="true">
     <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
@@ -37,7 +37,7 @@
   <!-- Step 01: Text Input -->
   <div class="section-head">
     <div><span class="step">01</span><h3>النص المطلوب تحويله</h3></div>
-    <span class="muted">TEXT INPUT</span>
+    <span id="langDetectedBadge" class="lang-detect-pill">🌍 اكتشاف تلقائي: العربية</span>
   </div>
   <textarea id="text" placeholder="اكتب النص الذي تريد تحويله إلى صوت هنا...&#10;&#10;مثال: أهلاً بكم في استوديو سام للصوتيات. نقدم لكم دقة متناهية والتزاماً تاماً بالوقت والسرعة المطلوبة."></textarea>
   <div class="text-meta">
@@ -80,7 +80,7 @@
   <!-- Live Precision Speed & Fit Monitor -->
   <div class="speed-box">
     <div class="speed-row">
-      <span>السرعة المحسوبة للالتزام بالمدة:</span>
+      <span>سرعة الإلقاء المحسوبة للمدة:</span>
       <b id="speedRatio">1.00x (طبيعي)</b>
     </div>
     <div class="speed-bar"><div id="speedFill" class="speed-fill good"></div></div>
@@ -96,8 +96,8 @@
   <div class="strict-banner">
     <span>🔒</span>
     <div>
-      <b>نظام الضبط الصارم للوقت (Strict Duration Lock):</b>
-      <p>يضمن البرنامج رياضياً خروج المقطع مساوياً للثواني المحددة بدقة 100% دون تأخير أو تقديم أجزاء من الثانية.</p>
+      <b>نظام الضبط الصارم للوقت عالي النقاء (Librubberband Pure Engine):</b>
+      <p>يضمن البرنامج خروج المقطع مساوياً للثواني المحددة بدقة 100% دون أي تشويه روبوتي، مع الحفاظ الكامل على نبرة الصوت البشرية وطبقات الحبال الصوتية.</p>
     </div>
   </div>
 
@@ -105,11 +105,15 @@
 
   <!-- Step 03: Output Language -->
   <div class="section-head">
-    <div><span class="step">03</span><h3>لغة الإخراج</h3></div>
+    <div><span class="step">03</span><h3>لغة النطق والإلقاء</h3></div>
     <span class="muted">OUTPUT LANGUAGE</span>
   </div>
   <div class="language">
-    <button class="lang active" data-lang="ar">
+    <button class="lang active" data-lang="auto">
+      <span>اكتشاف ذكي تلقائي (موصى به)</span>
+      <small>يتعرف فوراً على لغة النص (عربي / إنجليزي)</small>
+    </button>
+    <button class="lang" data-lang="ar">
       <span>العربية (Arabic)</span>
       <small>فصحى وجميع اللهجات العربية</small>
     </button>
@@ -123,12 +127,29 @@
 
   <!-- Step 04: Voice Selection & Preview -->
   <div class="section-head voice-head">
-    <div><span class="step">04</span><h3>الشخصية الصوتية (12 صوتاً)</h3></div>
-    <span class="muted" id="voiceCountBadge">12 صوت متاح</span>
+    <div><span class="step">04</span><h3>الشخصية الصوتية</h3></div>
+    <span class="muted" id="voiceCountBadge">جاري فحص الأصوات...</span>
+  </div>
+
+  <!-- Voice Management Toolbar -->
+  <div class="voice-toolbar">
+    <button id="uploadVoiceBtn" class="tool-btn primary" title="ارفع أي ملف صوتي من جهازك ليتم التحدث به فوراً">
+      <span>➕ إضافة صوت من جهازك</span>
+    </button>
+    <input type="file" id="voiceFileInput" accept=".wav,.mp3,.m4a,.ogg,.flac" style="display:none">
+    
+    <button id="openVoicesFolderBtn" class="tool-btn" title="افتح مجلد الأصوات في الويندوز وضع أي ملف صوتي هناك">
+      <span>📂 مجلد الأصوات</span>
+    </button>
+
+    <button id="refreshVoicesBtn" class="tool-btn" title="تحديث قائمة الأصوات واكتشاف أي ملف جديد مضاف">
+      <span>🔄 تحديث</span>
+    </button>
   </div>
 
   <div class="vfilters">
-    <button class="vfilter active" data-filter="all">الكل (12)</button>
+    <button class="vfilter active" data-filter="all">الكل</button>
+    <button class="vfilter" data-filter="custom">أصوات مخصصة 🌟</button>
     <button class="vfilter" data-filter="male">أصوات رجالية</button>
     <button class="vfilter" data-filter="female">أصوات نسائية</button>
     <button class="vfilter" data-filter="ar">لهجات عربية</button>
@@ -146,20 +167,54 @@
   </div>
   <div class="engines">
     <button class="engine-chip active" data-engine="xtts">
-      <b>XTTS-v2 (استنساخ البصمة الصوتية)</b>
-      <small>NVIDIA CUDA · مطابقة دقيقة للنبرة المرجعية</small>
+      <b>XTTS-v2 (استنساخ الهوية الصوتية الكاملة)</b>
+      <small>NVIDIA CUDA · استنساخ البصمة البشرية للعينة المحددة</small>
     </button>
     <button class="engine-chip" data-engine="fast">
-      <b>المحرك العصبي السريع (Fast Neural)</b>
-      <small>فائق السرعة وخفيف</small>
+      <b>Ultra Neural Studio (محرك الإلقاء البشري فائق الواقعية)</b>
+      <small>نبرات استوديو بشرية فائقة النقاء والوضوح</small>
     </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Step 06: Studio Echo & Reverb Effect -->
+  <div class="section-head">
+    <div><span class="step">06</span><h3>مؤثرات صدى الصوت الاحترافية (Studio Echo & Reverb)</h3></div>
+    <label class="toggle-switch">
+      <input type="checkbox" id="echoToggle">
+      <span class="toggle-slider"></span>
+      <span class="toggle-label" id="echoToggleText">تفعيل صدى الصوت</span>
+    </label>
+  </div>
+
+  <div class="echo-panel" id="echoPanel">
+    <div class="echo-row">
+      <span>درجة صدى الصوت (Echo Intensity):</span>
+      <b id="echoLabel">35% (صدى استوديو متوازن)</b>
+    </div>
+    <div class="slider-wrap">
+      <input id="echoSlider" type="range" min="0" max="100" step="5" value="35">
+      <div class="range-labels">
+        <span>0% (بدون صدى)</span>
+        <span class="center-tag">متوسط (40%)</span>
+        <span>100% (صدى عميق)</span>
+      </div>
+    </div>
+    <div class="echo-presets">
+      <button class="echo-btn" data-val="0">بدون صدى (0%)</button>
+      <button class="echo-btn active" data-val="25">استوديو خفيف (25%)</button>
+      <button class="echo-btn" data-val="40">بودكاست دافئ (40%)</button>
+      <button class="echo-btn" data-val="65">قاعة كبرى (65%)</button>
+      <button class="echo-btn" data-val="85">إيكو درامي (85%)</button>
+    </div>
   </div>
 
   <button id="generate" class="generate">
     <span id="genBtnText">بدء توليد الصوت بالوقت الصارم</span>
     <b id="genBtnArrow">↗</b>
   </button>
-  <p id="engineMessage" class="engine-msg">جاهز لتوليد مقطع مطابق للمدة المحددة.</p>
+  <p id="engineMessage" class="engine-msg">جاهز لتوليد مقطع مطابق للمدة المحددة بنبرة بشرية طبيعية.</p>
 
   <!-- Output Audio Player Box -->
   <div id="resultBox" class="result-box">
@@ -174,6 +229,7 @@
       <span id="resultVoice">الشخصية: -</span>
       <span id="resultLang">اللغة: -</span>
       <span id="resultEngine">المحرك: -</span>
+      <span id="resultEcho">الصدى: غير مفعّل</span>
     </div>
     <a id="downloadWav" class="dl-btn" href="#" download>⤓ تحميل الملف الصوتي (WAV)</a>
   </div>
@@ -189,8 +245,9 @@
     <h3>حالة النظام والعتاد</h3>
     <div class="stat"><span>كرت الشاشة (GPU)</span><b class="ok" id="gpuName">GTX 1660 SUPER</b></div>
     <div class="stat"><span>تسريع CUDA</span><b class="ok" id="cudaStatus">مفعّل (12.1)</b></div>
-    <div class="stat"><span>محرك التوقيت</span><b class="ok">Strict Pitch-Vocoder</b></div>
+    <div class="stat"><span>معالجة التوقيت</span><b class="ok">Librubberband Pure</b></div>
     <div class="stat"><span>المطابقة الزمنية</span><b class="ok">100% Sample-Exact</b></div>
+    <div class="stat"><span>مؤثر الصدى</span><b class="ok" id="sideEchoStatus">متوفر</b></div>
     <div class="stat"><span>الخصوصية</span><b class="ok">محلي 100%</b></div>
   </div>
 
@@ -202,7 +259,8 @@
       <li><strong>20 ثانية:</strong> يخرج 20.000 ثانية بالضبط.</li>
       <li><strong>30 ثانية:</strong> يخرج 30.000 ثانية بالضبط.</li>
       <li><strong>35 - 60 ثانية:</strong> مطابقة تامة لكل خيار.</li>
-      <li>الحفاظ على طبقة الصوت ونبرته دون تسريع كرتوني.</li>
+      <li><strong>صوت بشري واقعي:</strong> خالٍ تماماً من التشويه الروبوتي.</li>
+      <li><strong>إضافة أصوات فورية:</strong> ضع أي ملف في voices وسيعمل فوراً.</li>
     </ul>
   </div>
 
@@ -217,7 +275,7 @@
 </div>
 </main>
 <footer>
-  SAM DUB · SAM VOICE STUDIO <span>VERSION 2.0 · STRICT DURATION BUILD</span>
+  SAM DUB · SAM VOICE STUDIO <span>VERSION 2.2 · ULTRA REALISTIC & ECHO ENGINE</span>
 </footer>
 </div>
 
