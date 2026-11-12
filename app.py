@@ -9,6 +9,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+import numpy as np
+import soundfile as sf
+import librosa
 
 # Ensure Coqui license terms accepted
 os.environ["COQUI_TOS_AGREED"] = "1"
@@ -21,7 +24,7 @@ MODELS_DIR = BASE / "models" / "xtts_v2"
 
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
-app = FastAPI(title="SAM VOICE STUDIO", version="1.0.0")
+app = FastAPI(title="SAM VOICE STUDIO", version="2.0.0")
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/voices", StaticFiles(directory=VOICES_DIR), name="voices")
@@ -42,7 +45,6 @@ def get_xtts():
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"[SAM VOICE] Initializing XTTS-v2 on {device}...")
 
-        # Priority 1: bundled local models directory
         if MODELS_DIR.exists() and (MODELS_DIR / "config.json").exists():
             print(f"[SAM VOICE] Loading offline weights from {MODELS_DIR}...")
             _xtts_model = TTS(
@@ -50,7 +52,6 @@ def get_xtts():
                 config_path=str(MODELS_DIR / "config.json")
             ).to(device)
         else:
-            # Fallback to standard downloaded model
             print("[SAM VOICE] Loading model from default cache...")
             _xtts_model = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
 
@@ -58,6 +59,45 @@ def get_xtts():
         return _xtts_model
     finally:
         _xtts_loading = False
+
+def enforce_exact_duration(audio_path: Path, target_sec: float) -> float:
+    """
+    Enforces the target duration to the exact millisecond using pitch-preserving
+    time-stretching and sample-accurate boundary padding/fade.
+    """
+    y, sr = sf.read(str(audio_path))
+    if len(y.shape) > 1:
+        y = y.mean(axis=1)
+
+    raw_sec = len(y) / sr
+    if target_sec <= 0:
+        return raw_sec
+
+    rate = raw_sec / target_sec
+
+    # Stretch while preserving original pitch
+    if abs(rate - 1.0) > 0.001:
+        y_stretch = librosa.effects.time_stretch(y, rate=rate)
+    else:
+        y_stretch = y
+
+    # Exact target sample count
+    target_samples = int(round(target_sec * sr))
+    if len(y_stretch) < target_samples:
+        pad_len = target_samples - len(y_stretch)
+        y_final = np.pad(y_stretch, (0, pad_len), mode="constant")
+    else:
+        y_final = y_stretch[:target_samples]
+        # Smooth 15ms fade-out to prevent clicks
+        fade_len = min(int(sr * 0.015), len(y_final))
+        if fade_len > 0:
+            fade = np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
+            y_final[-fade_len:] *= fade
+
+    sf.write(str(audio_path), y_final, sr)
+    final_sec = round(len(y_final) / sr, 3)
+    print(f"[SAM VOICE] Exact Duration Enforced: {raw_sec:.2f}s -> {final_sec}s (Target: {target_sec}s)")
+    return final_sec
 
 class AnalyzeRequest(BaseModel):
     text: str = Field(default="", max_length=20000)
@@ -70,6 +110,8 @@ class GenerateRequest(BaseModel):
     voice_id: str
     language: str = "ar"
     engine: str = "xtts"  # "xtts" or "fast"
+    target_seconds: int = Field(default=15, ge=5, le=180)
+    strict_duration: bool = True
     speed: float = 1.0
 
 def count_words(text: str) -> int:
@@ -78,6 +120,13 @@ def count_words(text: str) -> int:
 @app.get("/")
 def home():
     return FileResponse(STATIC_DIR / "index.html")
+
+@app.get("/favicon.ico")
+def favicon():
+    fav = STATIC_DIR / "favicon.ico"
+    if fav.exists():
+        return FileResponse(fav)
+    return FileResponse(STATIC_DIR / "app_icon.png")
 
 @app.get("/api/health")
 def health():
@@ -93,6 +142,7 @@ def health():
     return {
         "status": "ok",
         "app": "SAM VOICE STUDIO",
+        "version": "2.0.0",
         "engine": "xtts_v2",
         "cuda": cuda_ok,
         "gpu": gpu_name,
@@ -115,27 +165,36 @@ def analyze(payload: AnalyzeRequest):
     wpm = 145 if payload.language == "ar" else 150
     estimated_seconds = round(words / wpm * 60, 1) if words else 0
     target_words = round(payload.target_seconds * wpm / 60)
+    
+    # Calculate required speed ratio to hit exact target
+    speed_factor = round(estimated_seconds / payload.target_seconds, 2) if (payload.target_seconds and words) else 1.0
+    
     low = round(target_words * 0.90)
     high = round(target_words * 1.10)
     delta = words - target_words
+    
     if not words:
         status = "empty"
-    elif low <= words <= high:
+        advice = "اكتب النص لبدء الحساب الدقيق للمدة والسرعة."
+    elif 0.85 <= speed_factor <= 1.25:
         status = "good"
-    elif words < low:
+        advice = f"✓ ممتاز! النص متناسق جداً مع مدة {payload.target_seconds} ثانية (معدل السرعة: {speed_factor}x - طبيعي)."
+    elif speed_factor < 0.85:
         status = "short"
+        advice = f"النص قصير بالنسبة لـ {payload.target_seconds} ثانية. سيتم ضبط الإلقاء بتأنٍ وتطبيق {payload.target_seconds} ثانية بدقة صارمة."
     else:
         status = "long"
+        advice = f"النص طويل بالنسبة لـ {payload.target_seconds} ثانية (سرعة {speed_factor}x). يفضل تخفيف النص أو زيادة الثواني للحفاظ على نبرة طبيعية."
+
     return {
         "words": words,
         "estimated_seconds": estimated_seconds,
         "target_seconds": payload.target_seconds,
         "target_words": target_words,
-        "recommended_min": low,
-        "recommended_max": high,
-        "difference": delta,
+        "speed_factor": speed_factor,
         "status": status,
-        "note": "تقدير أولي. المدة النهائية تعتمد على سرعة الإلقاء والوقفات والصوت المختار."
+        "advice": advice,
+        "note": f"البرنامج ملزم بإنهاء المقطع في {payload.target_seconds} ثانية بالضبط."
     }
 
 EDGE_VOICE_MAP = {
@@ -172,7 +231,7 @@ async def generate(payload: GenerateRequest):
     ref_wav = str(VOICES_DIR / selected_voice["file"]) if selected_voice else None
 
     timestamp = int(time.time())
-    out_filename = f"gen_{payload.voice_id}_{timestamp}.wav"
+    out_filename = f"gen_{payload.voice_id}_{payload.target_seconds}s_{timestamp}.wav"
     out_path = OUTPUTS_DIR / out_filename
 
     lang = payload.language if payload.language in ["ar", "en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "zh-cn", "ja", "ko", "hu", "hi"] else "ar"
@@ -205,11 +264,18 @@ async def generate(payload: GenerateRequest):
         await communicate.save(str(out_path))
         engine_used = f"Neural Fast Engine ({edge_voice})"
 
+    # STRICT EXACT DURATION ENFORCEMENT
+    final_duration = payload.target_seconds
+    if payload.strict_duration and payload.target_seconds > 0:
+        final_duration = enforce_exact_duration(out_path, float(payload.target_seconds))
+
     return {
         "status": "success",
         "audio_url": f"/outputs/{out_filename}",
         "filename": out_filename,
         "engine": engine_used,
         "voice": selected_voice["name"] if selected_voice else payload.voice_id,
-        "language": lang
+        "language": lang,
+        "target_seconds": payload.target_seconds,
+        "exact_duration": final_duration
     }

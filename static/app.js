@@ -19,36 +19,58 @@ function analyze() {
   const s = textEl.value, n = words(s), chars = s.length;
   const wpm = language === 'ar' ? 145 : 150;
   const targetWords = Math.round(targetSeconds * wpm / 60);
-  const min = Math.round(targetWords * 0.9), max = Math.round(targetWords * 1.1);
-  const seconds = n ? (n / wpm * 60) : 0;
+  const estimatedSeconds = n ? (n / wpm * 60) : 0;
+  const speedRatio = (estimatedSeconds && targetSeconds) ? (estimatedSeconds / targetSeconds) : 1.0;
 
   $('wordCount').textContent = n;
   $('charCount').textContent = chars;
   $('targetWords').textContent = targetWords + ' كلمة';
-  $('estimated').textContent = seconds.toFixed(1) + ' ثانية';
+  $('estimated').textContent = estimatedSeconds.toFixed(1) + ' ثانية';
+  $('guaranteedDuration').textContent = targetSeconds.toFixed(2) + ' ثانية بالضبط';
+  $('currentSliderSec').textContent = targetSeconds + ' ثانية';
 
+  // Speed bar update
+  const speedFill = $('speedFill');
+  const speedRatioEl = $('speedRatio');
   const fit = $('fit');
   fit.className = 'fit';
+  speedFill.className = 'speed-fill';
+
   if (!n) {
-    fit.textContent = 'اكتب النص لبدء تحليل المدة تلقائياً.';
+    speedRatioEl.textContent = '1.00x (طبيعي)';
+    speedFill.style.width = '50%';
+    speedFill.classList.add('good');
+    fit.textContent = `اكتب النص لبدء تحليل السرعة وضمان خروج المقطع بـ ${targetSeconds} ثانية بالضبط.`;
     return;
   }
-  if (n >= min && n <= max) {
+
+  // Visual meter
+  // Normal range: 0.85x to 1.25x
+  const pct = Math.min(Math.max((speedRatio / 2.0) * 100, 10), 100);
+  speedFill.style.width = pct + '%';
+
+  if (speedRatio >= 0.85 && speedRatio <= 1.25) {
+    speedRatioEl.textContent = `${speedRatio.toFixed(2)}x (إلقاء طبيعي ومتناسق)`;
+    speedFill.classList.add('good');
     fit.classList.add('good');
-    fit.textContent = '✓ ممتاز! طول النص متناسق جداً مع المدة المستهدفة.';
-  } else if (n < min) {
+    fit.textContent = `✓ ممتاز! النص متناسق تماماً مع مدة ${targetSeconds} ثانية. سيخرج المقطع بـ ${targetSeconds}.00 ثانية بالضبط وبنبرة طبيعية.`;
+  } else if (speedRatio < 0.85) {
+    speedRatioEl.textContent = `${speedRatio.toFixed(2)}x (إلقاء هادئ ومتأنٍ)`;
+    speedFill.classList.add('warn');
     fit.classList.add('short');
-    fit.textContent = `النص قصير مقارنة بالمدة. يمكنك إضافة تقريباً ${min - n} إلى ${max - n} كلمة للوصول للهدف.`;
+    fit.textContent = `النص قصير مقارنة بـ ${targetSeconds} ثانية. يمكنك إضافة كلمات إن رغبت، أو سيقوم النظام بمد الإلقاء بدقة ليصل إلى ${targetSeconds}.00 ثانية بالضبط.`;
   } else {
+    speedRatioEl.textContent = `${speedRatio.toFixed(2)}x (إلقاء سريع ومضغوط)`;
+    speedFill.classList.add('danger');
     fit.classList.add('long');
-    fit.textContent = `النص أطول من المدة المختارة. قلل تقريباً ${n - max} إلى ${n - min} كلمة.`;
+    fit.textContent = `النص طويل مقارنة بـ ${targetSeconds} ثانية. سيلتزم النظام بـ ${targetSeconds}.00 ثانية بالضبط، ولكن يُفضل تقليل بضع كلمات لتفادي السرعة الزائدة.`;
   }
 }
 
 function setDuration(v) {
   targetSeconds = Number(v);
   durationEl.value = targetSeconds;
-  $('durationLabel').textContent = targetSeconds + ' ثانية';
+  $('durationLabel').textContent = targetSeconds + ' ثانية بالضبط';
   document.querySelectorAll('.preset').forEach(b => {
     b.classList.toggle('active', Number(b.dataset.sec) === targetSeconds);
   });
@@ -108,7 +130,7 @@ function selectVoice(id) {
   });
   const v = voices.find(x => x.id === id);
   if (v) {
-    $('engineMessage').textContent = `تم اختيار: ${v.name} (${v.dialect})`;
+    $('engineMessage').textContent = `تم اختيار: ${v.name} (${v.dialect}) — المدة المستهدفة: ${targetSeconds} ثانية`;
   }
 }
 
@@ -145,7 +167,6 @@ function playPreview(file, btn) {
 // Fetch initial data
 async function init() {
   try {
-    // Health & System
     const hRes = await fetch('/api/health');
     const hData = await hRes.json();
     if (hData.status === 'ok') {
@@ -154,7 +175,6 @@ async function init() {
       $('cudaStatus').textContent = hData.cuda ? 'مفعّل بنجاح' : 'غير متوفر';
     }
 
-    // Voices
     const vRes = await fetch('/api/voices');
     voices = await vRes.json();
     if (voices.length > 0) {
@@ -197,20 +217,20 @@ document.querySelectorAll('.lang').forEach(btn => {
 
 // Text presets
 $('arSampleBtn').addEventListener('click', () => {
-  textEl.value = 'أهلاً بكم في استوديو سام للصوتيات الذكية. هذا النص تجريبي لاختبار مطابقة نبرة الصوت وتوليد الكلام بوضوح تام.';
+  textEl.value = 'أهلاً بكم في استوديو سام للصوتيات. نقدم لكم دقة متناهية والتزاماً تاماً بالوقت والسرعة المحددة لكل مشروع.';
   language = 'ar';
   document.querySelectorAll('.lang').forEach(b => b.classList.toggle('active', b.dataset.lang === 'ar'));
   analyze();
 });
 
 $('enSampleBtn').addEventListener('click', () => {
-  textEl.value = 'Welcome to SAM Voice Studio. This is a local AI speech synthesis test, reproducing the exact human voice profile.';
+  textEl.value = 'Welcome to SAM Voice Studio. Strict time-fitted AI speech synthesis, matching your exact target duration.';
   language = 'en';
   document.querySelectorAll('.lang').forEach(b => b.classList.toggle('active', b.dataset.lang === 'en'));
   analyze();
 });
 
-// Presets
+// Presets clicks
 document.querySelectorAll('.preset').forEach(btn => {
   btn.addEventListener('click', () => setDuration(btn.dataset.sec));
 });
@@ -233,8 +253,8 @@ $('generate').addEventListener('click', async () => {
   const resultBox = $('resultBox');
 
   genBtn.disabled = true;
-  genText.textContent = selectedEngine === 'xtts' ? 'جارٍ استنساخ الصوت عبر كرت الشاشة GPU...' : 'جارٍ توليد الصوت...';
-  msg.textContent = 'يجري الآن تشغيل نموذج الذكاء الاصطناعي ومعالجة النبرة الصوتية...';
+  genText.textContent = `جارٍ توليد المقطع وضبطه على ${targetSeconds} ثانية بالضبط...`;
+  msg.textContent = `يجري الآن تطبيق الذكاء الاصطناعي والمطابقة الزمنية الصارمة على ${targetSeconds} ثانية...`;
   resultBox.classList.remove('active');
 
   try {
@@ -245,17 +265,20 @@ $('generate').addEventListener('click', async () => {
         text: text,
         voice_id: selectedVoiceId,
         language: language,
-        engine: selectedEngine
+        engine: selectedEngine,
+        target_seconds: targetSeconds,
+        strict_duration: true
       })
     });
 
     const data = await res.json();
     if (res.ok && data.status === 'success') {
-      msg.textContent = `✓ اكتمل التوليد باستخدام: ${data.engine}`;
+      msg.textContent = `✓ اكتمل التوليد بنجاح! المدة الصادرة: ${data.exact_duration} ثانية بالضبط.`;
       outputAudio.src = data.audio_url + '?t=' + Date.now();
       $('resultVoice').textContent = `الشخصية: ${data.voice}`;
       $('resultLang').textContent = `اللغة: ${data.language === 'ar' ? 'العربية' : 'الإنجليزية'}`;
-      $('resultEngine').textContent = data.engine;
+      $('resultEngine').textContent = `المحرك: ${data.engine}`;
+      $('resultDurationBadge').textContent = `${data.exact_duration}s بالضبط (مطابق 100%)`;
       $('downloadWav').href = data.audio_url;
       $('downloadWav').download = data.filename;
       resultBox.classList.add('active');
@@ -268,7 +291,7 @@ $('generate').addEventListener('click', async () => {
     msg.textContent = 'تعذر إتمام التوليد. تأكد من تشغيل الخادم.';
   } finally {
     genBtn.disabled = false;
-    genText.textContent = 'بدء توليد الصوت بالذكاء الاصطناعي';
+    genText.textContent = 'بدء توليد الصوت بالوقت الصارم';
   }
 });
 

@@ -23,3 +23,7 @@ models/xtts_v2/*.pth
 # Portable installer (>100MB strictly blocked by GitHub)
 *.7z
 SAM_VOICE_STUDIO_Full_Setup.exe
+
+# Standalone runtime & installer builds
+runtime/
+*Setup*.exe
