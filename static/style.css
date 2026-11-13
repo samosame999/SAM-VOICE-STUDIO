@@ -141,3 +141,51 @@
   border-color: #42d6a0;
   color: #6aeec0;
 }
+
+/* Fusion Banner */
+.fusion-banner {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #11202f, #0d1722);
+  border: 1px solid #28445f;
+  border-radius: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.fusion-icon {
+  font-size: 24px;
+  background: #1b354d;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #ffb775;
+  flex-shrink: 0;
+}
+.fusion-info b {
+  font-size: 13px;
+  color: #79c0ff;
+  display: block;
+}
+.fusion-info p {
+  font-size: 11px;
+  color: #9cb5cb;
+  margin: 4px 0 8px;
+  line-height: 1.6;
+}
+.fusion-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fusion-tags span {
+  font-size: 9px;
+  background: #172b3c;
+  border: 1px solid #2c4964;
+  color: #6aeec0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}

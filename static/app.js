@@ -5,7 +5,7 @@ const previewAudio = $('previewAudio'), outputAudio = $('outputAudio');
 let voices = [];
 let selectedVoiceId = '';
 let language = 'auto';
-let selectedEngine = 'xtts';
+let selectedEngine = 'hybrid';
 let targetSeconds = 15;
 let currentPreviewPlaying = null;
 let currentFilter = 'all';
